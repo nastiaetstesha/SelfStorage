@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -24,13 +25,13 @@
 					<a class="nav-link SelfStorage_black" href="#">Рассчитать стоимость</a>
 				</li>
 				<li class="nav-item me-5">
-					<a class="nav-link SelfStorage_black" href="#">Правила хранения</a>
+					<a class="nav-link SelfStorage_black" href="{% url 'storage:faq' %}">Правила хранения</a>
 				</li>
 				<li class="nav-item me-5">
-					<a class="nav-link SelfStorage_black" href="#">Арендовать бокс</a>
+					<a class="nav-link SelfStorage_black" href="{% url 'storage:boxes' %}">Арендовать бокс</a>
 				</li>
 				<li class="nav-item me-5">
-					<a class="nav-link SelfStorage_green" href="#" data-bs-toggle="modal" data-bs-target="#SignModal">Войти</a>
+					<a class="nav-link SelfStorage_green" href="{% url 'storage:my_rent' %}" data-bs-toggle="modal" data-bs-target="#SignModal">Войти</a>
 				</li>
 				<li class="nav-item d-flex align-items-center">
 					<div class="d-flex justify-content-center align-items-center rounded-pill SelfStorage__bg_green me-2" style="height: 36px; width: 36px;">
@@ -58,7 +59,7 @@
 					<input type="text" required name="PASSWORD_CONFIRM" class="form-control border-8 mb-4 py-3 px-5 border-0 fs_24 SelfStorage__bg_lightgrey" placeholder="Подтверждение пароля">
 					<span class="fw-light SelfStorage_grey">Нажимая на кнопку, вы подтверждаете свое <a href="#" class="SelfStorage_grey">согласие на обработку персональных данных</a></span>
 					<button class="btn border-8 py-3 px-5 mt-5 mb-3 w-100 text-white fs_24 SelfStorage__bg_orange SelfStorage__btn2_orange">Зарегистрироваться</button>
-					<span>Уже зарегистрированы? <a href="#" class="SelfStorage_orange" data-bs-toggle="modal" data-bs-target="#SignModal" data-bs-dismiss="modal" aria-label="Close">Войти в личный кабинет</a></span>
+					<span>Уже зарегистрированы? <a href="{% url 'storage:my_rent' %}" class="SelfStorage_orange" data-bs-toggle="modal" data-bs-target="#SignModal" data-bs-dismiss="modal" aria-label="Close">Войти в личный кабинет</a></span>
 				</form>
 			</div>
 		</div>
@@ -75,7 +76,7 @@
 					<h1 class="modal-title text-center fw-bold mb-3">Вход</h1>
 					<input type="email" required name="EMAIL" class="form-control  border-8 mb-4 py-3 px-5 border-0 fs_24 SelfStorage__bg_lightgrey" placeholder="E-mail">
 					<input type="text" required name="PASSWORD" class="form-control  border-8 mb-4 py-3 px-5 border-0 fs_24 SelfStorage__bg_lightgrey" placeholder="Пароль">
-					<a href="#" class="SelfStorage_orange" data-bs-toggle="modal" data-bs-target="#ForgetModal" data-bs-dismiss="modal" aria-label="Close">Забыли пароль?</a>
+					<a href="{% url 'storage:my_rent' %}" class="SelfStorage_orange" data-bs-toggle="modal" data-bs-target="#ForgetModal" data-bs-dismiss="modal" aria-label="Close">Забыли пароль?</a>
 					<button class="btn border-8 py-3 px-5 mt-5 mb-3 w-100 text-white fs_24 SelfStorage__bg_orange SelfStorage__btn2_orange">Войти</button>
 					<span>Нет аккаунта?  <a href="#" class="SelfStorage_orange" data-bs-toggle="modal" data-bs-target="#RegModal" data-bs-dismiss="modal" aria-label="Close">Зарегистрируйтесь на сайте</a></span>
 				</form>
@@ -344,10 +345,10 @@
 		<div class="col-6 col-md-4 d-flex flex-column">
 			<p><a href="#" class="link-dark text-decoration-none">Тарифы</a></p>
 			<p><a href="#" class="link-dark text-decoration-none">Рассчитать стоимость</a></p>
-			<p><a href="#" class="link-dark text-decoration-none">Арендовать бокс</a></p>
+			<p><a href="{% url 'storage:boxes' %}" class="link-dark text-decoration-none">Арендовать бокс</a></p>
 		</div>
 		<div class="col-6 col-md-4 d-flex flex-column">
-			<p><a href="#" class="link-dark text-decoration-none">Правила хранения</a></p>
+			<p><a href="{% url 'storage:faq' %}" class="link-dark text-decoration-none">Правила хранения</a></p>
 			<p><a href="#" class="link-dark text-decoration-none">Адреса складов</a></p>
 			<p><a href="#" class="link-dark text-decoration-none">Отзывы</a></p>
 		</div>

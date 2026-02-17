@@ -149,3 +149,4 @@ dump.json
 .env
 .docker.env
 *.env
+self_storage/storage/static/storage/img

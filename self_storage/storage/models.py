@@ -31,6 +31,7 @@ class Warehouse(TimeStampedModel):
     phone = models.CharField("Телефон", max_length=30, blank=True)
     work_hours = models.CharField("Часы работы", max_length=120, blank=True, default="Ежедневно 9:00–21:00")
     is_active = models.BooleanField("Активен", default=True)
+    photo = models.ImageField("Фото склада", upload_to="warehouses/", blank=True, null=True)
 
     class Meta:
         verbose_name = "Склад"
