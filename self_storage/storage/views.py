@@ -4,9 +4,11 @@ from decimal import Decimal
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Max, Min
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
+from django.urls import reverse
 
-from .models import Warehouse, Box, StorageRule, Rental
+from .models import Warehouse, Box, StorageRule, Rental, PriceCalculationRequest
+
 
 
 DEFAULT_TEMPERATURE_C = 18
@@ -15,13 +17,26 @@ DEFAULT_TEMPERATURE_C = 18
 def index(request):
     warehouse = Warehouse.objects.filter(is_active=True).order_by("city", "title").first()
 
+    #  1) если нажали "Рассчитать стоимость" — сохраняем заявку
+    if request.method == "POST":
+        email = (request.POST.get("email") or "").strip()
+        source = (request.POST.get("source") or "hero").strip()
+
+        if email:
+            PriceCalculationRequest.objects.create(
+                email=email,
+                source=source,
+                warehouse=warehouse,
+                user=request.user if request.user.is_authenticated else None,
+            )
+        return redirect(reverse("storage:index"))
+
     if not warehouse:
         return render(request, "storage/index.html", {"warehouse": None})
 
     total_boxes = warehouse.total_boxes_count()
     free_boxes = warehouse.available_boxes_count()
 
-    # Свободные боксы: это те, у которых нет ACTIVE/OVERDUE аренды
     busy_ids = Rental.objects.filter(
         status__in=[Rental.Status.ACTIVE, Rental.Status.OVERDUE]
     ).values_list("box_id", flat=True)
@@ -32,12 +47,10 @@ def index(request):
     ).exclude(id__in=busy_ids)
 
     min_month_price = free_boxes_qs.aggregate(m=Min("length_m"))  # заглушка чтобы не ругался линтер
-    # На самом деле минимальную цену считаем так:
+
     min_price = None
     prices = list(free_boxes_qs.values_list("length_m", "width_m", "height_m"))
     if prices:
-        # Box.price_per_month - property, поэтому Min() по нему не сделать напрямую без аннотации.
-        
         from .models import PRICE_PER_M3_PER_MONTH
         min_price = min(
             (Decimal(l) * Decimal(w) * Decimal(h) * PRICE_PER_M3_PER_MONTH).quantize(Decimal("0.01"))
@@ -48,6 +61,9 @@ def index(request):
         m=Max("height_m")
     )["m"]
 
+    # 2) ссылка на фото склада (чтобы в шаблоне просто показать)
+    photo_url = warehouse.photo.url if warehouse.photo else None
+
     context = {
         "warehouse": warehouse,
         "total_boxes": total_boxes,
@@ -55,8 +71,10 @@ def index(request):
         "min_month_price": min_price,
         "temperature_c": DEFAULT_TEMPERATURE_C,
         "ceiling_height_m": max_ceiling,
+        "photo_url": photo_url,
     }
     return render(request, "storage/index.html", context)
+
 
 
 def faq(request):

@@ -324,6 +324,50 @@ class DeliveryTask(TimeStampedModel):
         return f"Доставка ({self.get_status_display()}) — {self.rental}"
 
 
+class PriceCalculationRequest(TimeStampedModel):
+    class Source(models.TextChoices):
+        HERO = "hero", "Форма на первом экране"
+        PROMO = "promo", "Форма в промо-блоке"
+        OTHER = "other", "Другое"
+
+    email = models.EmailField("E-mail")
+    source = models.CharField("Источник", max_length=20, choices=Source.choices, default=Source.OTHER)
+
+    # опционально (удобно для аналитики, которой у нас не будет)
+    ad_campaign = models.ForeignKey(
+        AdCampaign,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Кампания",
+    )
+    warehouse = models.ForeignKey(
+        Warehouse,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Склад (на странице)",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="price_requests",
+        verbose_name="Пользователь",
+    )
+    ip = models.GenericIPAddressField("IP", null=True, blank=True)
+    user_agent = models.CharField("User-Agent", max_length=300, blank=True)
+
+    class Meta:
+        verbose_name = "Заявка на расчет"
+        verbose_name_plural = "Заявки на расчет"
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.email} ({self.get_source_display()})"
+
+
 class EmailNotification(TimeStampedModel):
     """
     Лог email-уведомлений по аренде:

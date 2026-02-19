@@ -12,7 +12,17 @@ from .models import (
     StorageRule,
     UserProfile,
     Warehouse,
+    PriceCalculationRequest
 )
+
+
+@admin.register(PriceCalculationRequest)
+class PriceCalculationRequestAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "email", "warehouse", "source", "user")
+    list_filter = ("source", "warehouse", "created_at")
+    search_fields = ("email",)
+    autocomplete_fields = ("user", "warehouse")
+    ordering = ("-created_at",)
 
 
 @admin.register(Warehouse)
