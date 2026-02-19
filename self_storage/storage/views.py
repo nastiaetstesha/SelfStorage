@@ -1,15 +1,12 @@
-from django.shortcuts import render
-
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth import login  # Этого импорта не хватало!
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from django.db.models import Max, Min
+from django.urls import reverse
 from decimal import Decimal
 
-from django.contrib.auth.decorators import login_required
-from django.db.models import Max, Min
-from django.shortcuts import render, get_object_or_404, redirect
-from django.urls import reverse
-
-from .models import Warehouse, Box, StorageRule, Rental, PriceCalculationRequest
-
-
+from .models import Warehouse, Box, StorageRule, Rental, PriceCalculationRequest, UserProfile
 
 DEFAULT_TEMPERATURE_C = 18
 
@@ -17,7 +14,7 @@ DEFAULT_TEMPERATURE_C = 18
 def index(request):
     warehouse = Warehouse.objects.filter(is_active=True).order_by("city", "title").first()
 
-    #  1) если нажали "Рассчитать стоимость" — сохраняем заявку
+    # если нажали "Рассчитать стоимость" — сохраняем заявку
     if request.method == "POST":
         email = (request.POST.get("email") or "").strip()
         source = (request.POST.get("source") or "hero").strip()
@@ -46,7 +43,7 @@ def index(request):
         is_active=True,
     ).exclude(id__in=busy_ids)
 
-    min_month_price = free_boxes_qs.aggregate(m=Min("length_m"))  # заглушка чтобы не ругался линтер
+    min_month_price = free_boxes_qs.aggregate(m=Min("length_m"))
 
     min_price = None
     prices = list(free_boxes_qs.values_list("length_m", "width_m", "height_m"))
@@ -61,7 +58,6 @@ def index(request):
         m=Max("height_m")
     )["m"]
 
-    # 2) ссылка на фото склада (чтобы в шаблоне просто показать)
     photo_url = warehouse.photo.url if warehouse.photo else None
 
     context = {
@@ -76,7 +72,6 @@ def index(request):
     return render(request, "storage/index.html", context)
 
 
-
 def faq(request):
     allowed = StorageRule.objects.filter(
         is_active=True, rule_type=StorageRule.RuleType.ALLOWED
@@ -89,7 +84,6 @@ def faq(request):
 
 
 def boxes(request):
-    # показываем боксы выбранного склада (или первого активного)
     warehouse_id = request.GET.get("warehouse")
     if warehouse_id:
         warehouse = get_object_or_404(Warehouse, pk=warehouse_id, is_active=True)
@@ -130,18 +124,60 @@ def boxes(request):
     )
 
 
+def register(request):
+    """Регистрация и вход по email"""
+    if request.method == 'POST':
+        email = request.POST.get('email')
+
+        if email:
+            user, created = User.objects.get_or_create(
+                username=email,
+                defaults={'email': email}
+            )
+
+            # Создаем профиль для нового пользователя
+            if created:
+                UserProfile.objects.create(user=user)
+
+            login(request, user)
+            return redirect('storage:my_rent')
+
+    return redirect('storage:index')
+
+
 @login_required
 def my_rent(request):
-    profile = getattr(request.user, "profile", None)
+    # Получаем или создаем профиль пользователя
+    profile, created = UserProfile.objects.get_or_create(user=request.user)
+
+    # Обработка POST запроса (сохранение данных)
+    if request.method == 'POST':
+        # Обновляем телефон
+        phone = request.POST.get('phone')
+        if phone is not None:  # Разрешаем пустой телефон
+            profile.phone = phone
+
+        # Обновляем фото
+        if request.FILES.get('avatar'):
+            # Удаляем старое фото, если оно было
+            if profile.avatar:
+                profile.avatar.delete(save=False)
+            profile.avatar = request.FILES['avatar']
+
+        profile.save()
+        return redirect('storage:my_rent')
+
+    # Получаем аренды пользователя
     rentals = Rental.objects.filter(user=request.user).order_by("-created_at")
-    active = rentals.filter(status__in=[Rental.Status.ACTIVE, Rental.Status.OVERDUE])
+    active_rentals = rentals.filter(status__in=[Rental.Status.ACTIVE, Rental.Status.OVERDUE])
 
     return render(
         request,
         "storage/my-rent.html",
         {
+            'user': request.user,
             "profile": profile,
             "rentals": rentals,
-            "active_rentals": active,
+            "active_rentals": active_rentals,
         },
     )
