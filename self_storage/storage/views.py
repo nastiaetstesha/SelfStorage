@@ -124,10 +124,27 @@ def boxes(request):
     )
 
 
+def login_redirect(request):
+    """
+    Страница входа.
+    Получает параметр next (куда вернуться после входа)
+    и показывает главную с открытым модальным окном
+    """
+    # Получаем URL, на который нужно вернуться после входа
+    next_url = request.GET.get('next', '')
+
+    # Рендерим главную страницу и передаем флаг для открытия модалки
+    return render(request, "storage/index.html", {
+        "open_login_modal": True,  # Флаг для открытия модального окна
+        "next_url": next_url  # Адрес для возврата
+    })
+
+
 def register(request):
     """Регистрация и вход по email"""
     if request.method == 'POST':
         email = request.POST.get('email')
+        next_url = request.POST.get('next', '')  # 👈 Получаем next из формы
 
         if email:
             user, created = User.objects.get_or_create(
@@ -140,6 +157,12 @@ def register(request):
                 UserProfile.objects.create(user=user)
 
             login(request, user)
+
+            # Если есть next_url и он не пустой, перенаправляем туда
+            if next_url and next_url.strip():
+                return redirect(next_url)
+
+            # Иначе в личный кабинет
             return redirect('storage:my_rent')
 
     return redirect('storage:index')

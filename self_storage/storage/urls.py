@@ -10,6 +10,7 @@ urlpatterns = [
     path("boxes/", views.boxes, name="boxes"),
     path("my-rent/", views.my_rent, name="my_rent"),
     path("register/", views.register, name="register"),
+    path("login/", views.login_redirect, name="login"),
     path("logout/", auth_views.LogoutView.as_view(next_page='storage:index'), name="logout"),
 ]
 
