@@ -12,9 +12,15 @@ from .models import (
     StorageRule,
     UserProfile,
     Warehouse,
-    PriceCalculationRequest
+    PriceCalculationRequest,
+    ShortLink
 )
 
+
+@admin.register(ShortLink)
+class ShortLinkAdmin(admin.ModelAdmin):
+    list_display = ("code", "ad_campaign", "clicks", "target_path", "created_at")
+    readonly_fields = ("code", "clicks", "created_at")
 
 @admin.register(PriceCalculationRequest)
 class PriceCalculationRequestAdmin(admin.ModelAdmin):

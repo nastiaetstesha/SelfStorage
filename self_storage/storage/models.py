@@ -10,7 +10,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
-
+import secrets
 
 PRICE_PER_M3_PER_MONTH = Decimal("750.00")
 
@@ -400,3 +400,38 @@ class EmailNotification(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.get_kind_display()} — {self.rental_id}"
+    
+
+class ShortLink(TimeStampedModel):
+    """
+    Короткая ссылка для рекламы.
+    1 ссылка = 1 рекламная кампания
+    """
+    code = models.CharField("Код", max_length=16, unique=True, db_index=True)
+    target_path = models.CharField(
+        "Куда ведёт",
+        max_length=200,
+        default="/",
+        help_text="Например: / или /boxes/"
+    )
+
+    ad_campaign = models.ForeignKey(
+        AdCampaign,
+        on_delete=models.CASCADE,
+        related_name="short_links",
+        verbose_name="Рекламная кампания",
+    )
+
+    clicks = models.PositiveIntegerField("Переходы", default=0)
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            while True:
+                code = secrets.token_urlsafe(6)[:8]
+                if not ShortLink.objects.filter(code=code).exists():
+                    self.code = code
+                    break
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"/s/{self.code} → {self.ad_campaign.code}"
