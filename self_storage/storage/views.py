@@ -5,8 +5,9 @@ from django.contrib.auth.models import User
 from django.db.models import Max, Min
 from django.urls import reverse
 from decimal import Decimal
+from django.db.models import F
 
-from .models import Warehouse, Box, StorageRule, Rental, PriceCalculationRequest, UserProfile
+from .models import ShortLink, Warehouse, Box, StorageRule, Rental, PriceCalculationRequest, UserProfile
 
 DEFAULT_TEMPERATURE_C = 18
 
@@ -204,3 +205,17 @@ def my_rent(request):
             "active_rentals": active_rentals,
         },
     )
+
+
+def short_link_redirect(request, code: str):
+    """
+    Переход по короткой ссылке:
+    - увеличиваем счётчик
+    - редиректим на target_path
+    """
+    short_link = get_object_or_404(ShortLink, code=code)
+
+    # атомарно увеличиваем счётчик
+    ShortLink.objects.filter(pk=short_link.pk).update(clicks=F("clicks") + 1)
+
+    return redirect(short_link.target_path)

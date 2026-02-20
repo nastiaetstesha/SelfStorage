@@ -12,5 +12,6 @@ urlpatterns = [
     path("register/", views.register, name="register"),
     path("login/", views.login_redirect, name="login"),
     path("logout/", auth_views.LogoutView.as_view(next_page='storage:index'), name="logout"),
+    path("s/<str:code>/", views.short_link_redirect, name="short_link"),
 ]
 
