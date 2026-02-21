@@ -13,7 +13,7 @@ from django.utils import timezone
 import secrets
 
 PRICE_PER_M3_PER_MONTH = Decimal("750.00")
-
+OVERDUE_TARIFF_MULTIPLIER = Decimal("1.10")
 
 class TimeStampedModel(models.Model):
     created_at = models.DateTimeField("Создано", auto_now_add=True)
