@@ -42,9 +42,10 @@ class Command(BaseCommand):
 
             # аренды, которые заканчиваются ровно в этот день
             qs = Rental.objects.filter(
-                status__in=[Rental.Status.ACTIVE],
                 end_date=target_end,
+                end_date__gte=today,
             )
+
 
             # не шлём, если такое уведомление уже было
             already_sent = EmailNotification.objects.filter(

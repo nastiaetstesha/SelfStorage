@@ -125,6 +125,12 @@ STATIC_URL = 'static/'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-DEFAULT_FROM_EMAIL = "no-reply@selfstorage.local"
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# EMAIL_HOST = "smtp.yandex.ru"
+# EMAIL_PORT = 465
+# EMAIL_USE_SSL = True
+EMAIL_HOST_USER = "no-reply@yourdomain.ru"
+# EMAIL_HOST_PASSWORD = "APP_PASSWORD"
+# DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
 
