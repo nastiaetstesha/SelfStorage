@@ -1,23 +1,75 @@
 {% extends "storage/index.html" %}
 {% load static %}
+
 {% block title %}Аренда бокса{% endblock %}
+
 {% block content %}
 <main class="container mt-header">
-    <h1>Аренда бокса {{ box.code }}</h1>
-    
-    <form method="post">
-        {% csrf_token %}
-        
-        <label>Промокод</label>
-        <input type="text" name="promo_code" placeholder="Введите промокод">
-        
-        <label>Телефон</label>
-        <input type="text" name="contact_phone" required>
-        
-        <label>Адрес забора</label>
-        <input type="text" name="pickup_address">
-        
-        <button type="submit">Арендовать</button>
-    </form>
+	<article class="row justify-content-center">
+		<div class="col-12 col-lg-8">
+			<h1 class="text-center fw-bold SelfStorage_green mb-5">Оформление аренды</h1>
+			
+			<div class="card mb-4">
+				<div class="card-body">
+					<h5 class="card-title fw-bold">Информация о складе</h5>
+					<p class="mb-1"><strong>Город:</strong> {{ box.warehouse.city }}</p>
+					<p class="mb-1"><strong>Адрес:</strong> {{ box.warehouse.address }}</p>
+					<p class="mb-0"><strong>Телефон:</strong> {{ box.warehouse.phone|default:"—" }}</p>
+				</div>
+			</div>
+			
+			<div class="card mb-4">
+				<div class="card-body">
+					<h5 class="card-title fw-bold">Информация о боксе</h5>
+					<p class="mb-1"><strong>Код бокса:</strong> {{ box.code }}</p>
+					<p class="mb-1"><strong>Размеры:</strong> {{ box.length_m }} × {{ box.width_m }} × {{ box.height_m }} м</p>
+					<p class="mb-1"><strong>Объём:</strong> {{ box.volume_m3 }} м³</p>
+					<p class="mb-0"><strong>Цена за месяц:</strong> <span class="SelfStorage_orange fw-bold">{{ box.price_per_month }} ₽</span></p>
+				</div>
+			</div>
+			
+			<div class="card mb-4">
+				<div class="card-body">
+					<h5 class="card-title fw-bold">Арендатор</h5>
+					<p class="mb-0"><strong>Логин:</strong> {{ user.username }}</p>
+					<p class="mb-0"><strong>Email:</strong> {{ user.email }}</p>
+				</div>
+			</div>
+			
+			<form method="post" class="card">
+				{% csrf_token %}
+				<div class="card-body">
+					<h5 class="card-title fw-bold mb-4">Данные для аренды</h5>
+					
+					<div class="mb-3">
+						<label for="promo_code" class="form-label">Промокод (если есть)</label>
+						<input type="text" class="form-control" id="promo_code" name="promo_code" placeholder="Введите промокод">
+					</div>
+					
+					<div class="mb-3">
+						<label for="contact_phone" class="form-label">Телефон для связи *</label>
+						<input type="text" class="form-control" id="contact_phone" name="contact_phone" required>
+					</div>
+					
+					<div class="mb-3">
+						<label for="pickup_address" class="form-label">Адрес забора вещей</label>
+						<input type="text" class="form-control" id="pickup_address" name="pickup_address" placeholder="Укажите адрес, откуда забрать вещи">
+					</div>
+					
+					<div class="form-check mb-3">
+						<input class="form-check-input" type="checkbox" value="" id="personal_data_consent" required>
+						<label class="form-check-label" for="personal_data_consent">
+							Я согласен на обработку персональных данных
+						</label>
+					</div>
+					
+					<div class="d-grid gap-2">
+						<button type="submit" class="btn btn-lg text-white SelfStorage__bg_green SelfStorage__btn2_green border-8">Оформить аренду</button>
+						<a href="{% url 'storage:boxes' %}" class="btn btn-lg btn-outline-secondary">Отмена</a>
+					</div>
+				</div>
+			</form>
+		</div>
+	</article>
 </main>
 {% endblock %}
