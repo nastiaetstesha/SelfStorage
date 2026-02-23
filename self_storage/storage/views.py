@@ -120,11 +120,7 @@ def boxes(request):
         is_active=True, rule_type=StorageRule.RuleType.FORBIDDEN
     ).order_by("sort_order", "title")
 
-    # Обработка формы заявки на бесплатный вывоз
     if request.method == "POST" and request.POST.get("action") == "pickup":
-        # Здесь можно сохранить заявку на вывоз
-        # phone = request.POST.get("phone")
-        # address = request.POST.get("address")
         pass
 
     if not warehouse:
@@ -140,15 +136,17 @@ def boxes(request):
             },
         )
 
-    busy_ids = Rental.objects.filter(
-        status__in=[Rental.Status.ACTIVE, Rental.Status.OVERDUE]
-    ).values_list("box_id", flat=True)
+    busy_ids = set(
+        Rental.objects.filter(
+            status__in=[Rental.Status.ACTIVE, Rental.Status.OVERDUE]
+        ).values_list("box_id", flat=True)
+    )
 
     boxes_qs = Box.objects.filter(warehouse=warehouse, is_active=True).order_by("code")
 
     boxes_data = []
     for b in boxes_qs:
-        is_free = b.id not in set(busy_ids)
+        is_free = b.id not in busy_ids
         boxes_data.append(
             {
                 "box": b,
@@ -158,7 +156,6 @@ def boxes(request):
             }
         )
 
-    # Цены для разного объёма (для формы вывоза)
     price_estimates = [
         {"volume": "до 3 м³", "price": "от 1000 ₽"},
         {"volume": "3-10 м³", "price": "от 2500 ₽"},
@@ -172,6 +169,7 @@ def boxes(request):
             "warehouse": warehouse,
             "warehouses": warehouses,
             "boxes": boxes_data,
+            "busy_ids": list(busy_ids),
             "allowed_rules": allowed_rules,
             "forbidden_rules": forbidden_rules,
             "price_estimates": price_estimates,
