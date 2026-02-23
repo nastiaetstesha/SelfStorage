@@ -1,0 +1,23 @@
+{% extends "storage/index.html" %}
+{% load static %}
+{% block title %}Аренда бокса{% endblock %}
+{% block content %}
+<main class="container mt-header">
+    <h1>Аренда бокса {{ box.code }}</h1>
+    
+    <form method="post">
+        {% csrf_token %}
+        
+        <label>Промокод</label>
+        <input type="text" name="promo_code" placeholder="Введите промокод">
+        
+        <label>Телефон</label>
+        <input type="text" name="contact_phone" required>
+        
+        <label>Адрес забора</label>
+        <input type="text" name="pickup_address">
+        
+        <button type="submit">Арендовать</button>
+    </form>
+</main>
+{% endblock %}

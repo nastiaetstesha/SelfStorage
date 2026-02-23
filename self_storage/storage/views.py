@@ -7,13 +7,24 @@ from django.urls import reverse
 from decimal import Decimal
 from django.db.models import F
 
-from .models import ShortLink, Warehouse, Box, StorageRule, Rental, PriceCalculationRequest, UserProfile
+from .models import (
+    ShortLink,
+    Warehouse,
+    Box,
+    StorageRule,
+    Rental,
+    PriceCalculationRequest,
+    UserProfile,
+    PromoCode,
+)
 
 DEFAULT_TEMPERATURE_C = 18
 
 
 def index(request):
-    warehouse = Warehouse.objects.filter(is_active=True).order_by("city", "title").first()
+    warehouse = (
+        Warehouse.objects.filter(is_active=True).order_by("city", "title").first()
+    )
 
     # если нажали "Рассчитать стоимость" — сохраняем заявку
     if request.method == "POST":
@@ -50,8 +61,11 @@ def index(request):
     prices = list(free_boxes_qs.values_list("length_m", "width_m", "height_m"))
     if prices:
         from .models import PRICE_PER_M3_PER_MONTH
+
         min_price = min(
-            (Decimal(l) * Decimal(w) * Decimal(h) * PRICE_PER_M3_PER_MONTH).quantize(Decimal("0.01"))
+            (Decimal(l) * Decimal(w) * Decimal(h) * PRICE_PER_M3_PER_MONTH).quantize(
+                Decimal("0.01")
+            )
             for l, w, h in prices
         )
 
@@ -81,7 +95,9 @@ def faq(request):
         is_active=True, rule_type=StorageRule.RuleType.FORBIDDEN
     ).order_by("sort_order", "title")
 
-    return render(request, "storage/faq.html", {"allowed": allowed, "forbidden": forbidden})
+    return render(
+        request, "storage/faq.html", {"allowed": allowed, "forbidden": forbidden}
+    )
 
 
 def boxes(request):
@@ -89,12 +105,40 @@ def boxes(request):
     if warehouse_id:
         warehouse = get_object_or_404(Warehouse, pk=warehouse_id, is_active=True)
     else:
-        warehouse = Warehouse.objects.filter(is_active=True).order_by("city", "title").first()
+        warehouse = (
+            Warehouse.objects.filter(is_active=True).order_by("city", "title").first()
+        )
 
     warehouses = Warehouse.objects.filter(is_active=True).order_by("city", "title")
 
+    # Правила хранения (разрешённые и запрещённые вещи)
+    allowed_rules = StorageRule.objects.filter(
+        is_active=True, rule_type=StorageRule.RuleType.ALLOWED
+    ).order_by("sort_order", "title")
+
+    forbidden_rules = StorageRule.objects.filter(
+        is_active=True, rule_type=StorageRule.RuleType.FORBIDDEN
+    ).order_by("sort_order", "title")
+
+    # Обработка формы заявки на бесплатный вывоз
+    if request.method == "POST" and request.POST.get("action") == "pickup":
+        # Здесь можно сохранить заявку на вывоз
+        # phone = request.POST.get("phone")
+        # address = request.POST.get("address")
+        pass
+
     if not warehouse:
-        return render(request, "storage/boxes.html", {"warehouse": None, "warehouses": warehouses, "boxes": []})
+        return render(
+            request,
+            "storage/boxes.html",
+            {
+                "warehouse": None,
+                "warehouses": warehouses,
+                "boxes": [],
+                "allowed_rules": allowed_rules,
+                "forbidden_rules": forbidden_rules,
+            },
+        )
 
     busy_ids = Rental.objects.filter(
         status__in=[Rental.Status.ACTIVE, Rental.Status.OVERDUE]
@@ -114,6 +158,13 @@ def boxes(request):
             }
         )
 
+    # Цены для разного объёма (для формы вывоза)
+    price_estimates = [
+        {"volume": "до 3 м³", "price": "от 1000 ₽"},
+        {"volume": "3-10 м³", "price": "от 2500 ₽"},
+        {"volume": "10+ м³", "price": "от 5000 ₽"},
+    ]
+
     return render(
         request,
         "storage/boxes.html",
@@ -121,6 +172,9 @@ def boxes(request):
             "warehouse": warehouse,
             "warehouses": warehouses,
             "boxes": boxes_data,
+            "allowed_rules": allowed_rules,
+            "forbidden_rules": forbidden_rules,
+            "price_estimates": price_estimates,
         },
     )
 
@@ -132,25 +186,28 @@ def login_redirect(request):
     и показывает главную с открытым модальным окном
     """
     # Получаем URL, на который нужно вернуться после входа
-    next_url = request.GET.get('next', '')
+    next_url = request.GET.get("next", "")
 
     # Рендерим главную страницу и передаем флаг для открытия модалки
-    return render(request, "storage/index.html", {
-        "open_login_modal": True,  # Флаг для открытия модального окна
-        "next_url": next_url  # Адрес для возврата
-    })
+    return render(
+        request,
+        "storage/index.html",
+        {
+            "open_login_modal": True,  # Флаг для открытия модального окна
+            "next_url": next_url,  # Адрес для возврата
+        },
+    )
 
 
 def register(request):
     """Регистрация и вход по email"""
-    if request.method == 'POST':
-        email = request.POST.get('email')
-        next_url = request.POST.get('next', '')  # 👈 Получаем next из формы
+    if request.method == "POST":
+        email = request.POST.get("email")
+        next_url = request.POST.get("next", "")  # 👈 Получаем next из формы
 
         if email:
             user, created = User.objects.get_or_create(
-                username=email,
-                defaults={'email': email}
+                username=email, defaults={"email": email}
             )
 
             # Создаем профиль для нового пользователя
@@ -164,9 +221,9 @@ def register(request):
                 return redirect(next_url)
 
             # Иначе в личный кабинет
-            return redirect('storage:my_rent')
+            return redirect("storage:my_rent")
 
-    return redirect('storage:index')
+    return redirect("storage:index")
 
 
 @login_required
@@ -175,31 +232,33 @@ def my_rent(request):
     profile, created = UserProfile.objects.get_or_create(user=request.user)
 
     # Обработка POST запроса (сохранение данных)
-    if request.method == 'POST':
+    if request.method == "POST":
         # Обновляем телефон
-        phone = request.POST.get('phone')
+        phone = request.POST.get("phone")
         if phone is not None:  # Разрешаем пустой телефон
             profile.phone = phone
 
         # Обновляем фото
-        if request.FILES.get('avatar'):
+        if request.FILES.get("avatar"):
             # Удаляем старое фото, если оно было
             if profile.avatar:
                 profile.avatar.delete(save=False)
-            profile.avatar = request.FILES['avatar']
+            profile.avatar = request.FILES["avatar"]
 
         profile.save()
-        return redirect('storage:my_rent')
+        return redirect("storage:my_rent")
 
     # Получаем аренды пользователя
     rentals = Rental.objects.filter(user=request.user).order_by("-created_at")
-    active_rentals = rentals.filter(status__in=[Rental.Status.ACTIVE, Rental.Status.OVERDUE])
+    active_rentals = rentals.filter(
+        status__in=[Rental.Status.ACTIVE, Rental.Status.OVERDUE]
+    )
 
     return render(
         request,
         "storage/my-rent.html",
         {
-            'user': request.user,
+            "user": request.user,
             "profile": profile,
             "rentals": rentals,
             "active_rentals": active_rentals,
@@ -219,3 +278,44 @@ def short_link_redirect(request, code: str):
     ShortLink.objects.filter(pk=short_link.pk).update(clicks=F("clicks") + 1)
 
     return redirect(short_link.target_path)
+
+
+@login_required
+def rent_box(request, box_id):
+    box = get_object_or_404(Box, pk=box_id, is_active=True)
+
+    if request.method == "POST":
+        promo_code = request.POST.get("promo_code", "").strip()
+        contact_phone = request.POST.get("contact_phone")
+        pickup_address = request.POST.get("pickup_address", "")
+
+        base_price = box.price_per_month
+        final_price = base_price
+        promo = None
+
+        if promo_code:
+            promo = PromoCode.objects.filter(code=promo_code).first()
+            if promo and promo.is_valid_now():
+                discount = Decimal(promo.discount_percent) / 100
+                final_price = base_price * (1 - discount)
+
+        rental = Rental.objects.create(
+            user=request.user,
+            box=box,
+            contact_phone=contact_phone,
+            pickup_address=pickup_address,
+            base_price_per_month=base_price,
+            final_price_per_month=final_price,
+            promo_code=promo,
+            status=Rental.Status.ACTIVE,
+        )
+
+        return redirect("storage:my_rent")
+
+    return render(
+        request,
+        "storage/rent_box.html",
+        {
+            "box": box,
+        },
+    )

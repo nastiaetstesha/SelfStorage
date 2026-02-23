@@ -1,5 +1,5 @@
 {% load static %}
-<!DOCTYPE html>
+
 <html lang="ru">
 <head>
 	<meta charset="UTF-8">
@@ -13,7 +13,7 @@
 
 	<link rel="stylesheet" href="{% static 'storage/css/Style.css' %}">
 
-	<title>SelfStorage</title>
+	{% block title %}<title>SelfStorage</title>{% endblock %}
 </head>
 <body>
 
@@ -32,7 +32,7 @@
 		<div class="collapse navbar-collapse justify-content-end" id="navbar">
 			<ul class="navbar-nav">
 				<li class="nav-item me-5">
-					<a class="nav-link SelfStorage_black" href="#calc">Рассчитать стоимость</a>
+          <a class="nav-link SelfStorage_black" href="{% url 'storage:boxes' %}#pills-all">Рассчитать стоимость</a>
 				</li>
 				<li class="nav-item me-5">
 					<a class="nav-link SelfStorage_black" href="{% url 'storage:faq' %}">Правила хранения</a>
@@ -70,7 +70,7 @@
 	</nav>
 </header>
 
-<!-- МОДАЛЬНОЕ ОКНО РЕГИСТРАЦИИ/ВХОДА -->
+
 <aside class="modal fade" id="RegModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-scrollable modal-fullscreen">
         <div class="modal-content">
@@ -82,17 +82,14 @@
                     {% csrf_token %}
                     <h1 class="modal-title text-center fw-bold mb-3">Вход / Регистрация</h1>
 
-                    <!-- Поле для email -->
                     <input type="email" required name="email" class="form-control border-8 mb-4 py-3 px-5 border-0 fs_24 SelfStorage__bg_lightgrey" placeholder="Ваш E-mail">
 
-                    <!-- Скрытое поле для next_url -->
                     {% if next_url %}
                         <input type="hidden" name="next" value="{{ next_url }}">
                     {% endif %}
 
                     <span class="fw-light SelfStorage_grey mb-3">Введите email чтобы войти или зарегистрироваться</span>
 
-                    <!-- Кнопка отправки -->
                     <button class="btn border-8 py-3 px-5 mt-3 mb-3 w-100 text-white fs_24 SelfStorage__bg_orange SelfStorage__btn2_orange">
                         Войти / Зарегистрироваться
                     </button>
@@ -104,6 +101,7 @@
     </div>
 </aside>
 
+{% block content %}
 <main class="container mt-header">
 
 	<article class="row">
@@ -214,7 +212,6 @@
 		</div>
 	</article>
 
-	<!-- Блок “Всегда рядом” — из БД -->
 	<article class="row pt-header">
 		<div class="col-12 col-lg-6 mb-3 mb-lg-0">
 			{% if photo_url %}
@@ -280,8 +277,6 @@
 		</div>
 	</article>
 
-	<!-- Отзывы: картинки из static -->
-	<article class="row pt-header">
 		<h1 class="text-center fw-bold SelfStorage_green mb-4">Забота о ваших ценностях – наша главная задача</h1>
 
 		<div id="carouselExampleControls" class="carousel slide" data-bs-ride="carousel">
@@ -349,6 +344,7 @@
 	</article>
 
 </main>
+{% endblock %}
 
 <footer class="container py-5">
 	<div class="row mb-5">
@@ -413,12 +409,10 @@
 	</div>
 </footer>
 
-<!-- Скрипт Bootstrap -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
 		integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
 		crossorigin="anonymous"></script>
 
-<!-- Скрипт для автоматического открытия модального окна -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Если передан флаг open_login_modal, открываем модальное окно
@@ -437,5 +431,3 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 </body>
-
-
