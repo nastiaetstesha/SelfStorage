@@ -17,32 +17,22 @@
 		<h6 class="text-center SelfStorage_grey">Арендуйте склад индивидуального хранения по уникальной цене прямо сейчас</h6>
 		<a href="#BOX" id="toBox" class="d-none"></a>
 		<ul class="nav nav-pills mb-3 d-flex justify-content-between" id="boxes-links" role="tablist">
-			{% for wh in warehouses %}
+			{% for warehouse_item in warehouses_list %}
 			<li class="nav-item flex-grow-1 mx-2" role="presentation">
-				<a href="#BOX" class="row text-decoration-none py-3 px-4 mt-5 SelfStorage__boxlink" id="pills-{{ wh.pk }}-tab" data-bs-toggle="pill" data-bs-target="#pills-{{ wh.pk }}" role="tab" aria-controls="pills-{{ wh.pk }}" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
+				<a href="#BOX" class="row text-decoration-none py-3 px-4 mt-5 SelfStorage__boxlink" id="pills-{{ warehouse_item.warehouse.pk }}-tab" data-bs-toggle="pill" data-bs-target="#pills-{{ warehouse_item.warehouse.pk }}" role="tab" aria-controls="pills-{{ warehouse_item.warehouse.pk }}" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
 					<div class="col-12 col-lg-3 d-flex justify-content-center">
-            {% if forloop.counter == 1 %}
-                <img src="{% static 'storage/img/image11.png' %}" ...>
-            {% elif forloop.counter == 2 %}
-                <img src="{% static 'storage/img/image9.png' %}" ...>
-            {% elif forloop.counter == 3 %}
-                <img src="{% static 'storage/img/image15.png' %}" ...>
-            {% elif forloop.counter == 4 %}
-                <img src="{% static 'storage/img/image151.png' %}" ...>
-            {% else %}
-                <img src="{% static 'storage/img/image16.png' %}" ...>
-            {% endif %}
+						<img src="{% static 'storage/img/' %}{{ warehouse_item.image_name }}.png" alt="" class="mb-3 mb-lg-0" style="width: 80px; height: 80px; object-fit: cover;">
 					</div>
 					<div class="col-12 col-md-4 col-lg-3 d-flex flex-column justify-content-center">
-						<h4 class="text-center">{{ wh.city }}</h4>
-						<h6 class="text-center">{{ wh.address }}</h6>
+						<h4 class="text-center">{{ warehouse_item.warehouse.city }}</h4>
+						<h6 class="text-center">{{ warehouse_item.warehouse.address }}</h6>
 					</div>
 					<div class="col-12 col-md-4 col-lg-3 d-flex flex-column justify-content-center">
-						<h4 class="text-center">{{ wh.available_boxes_count }} из {{ wh.total_boxes_count }}</h4>
+						<h4 class="text-center">{{ warehouse_item.warehouse.available_boxes_count }} из {{ warehouse_item.warehouse.total_boxes_count }}</h4>
 						<h6 class="text-center">Боксов свободно</h6>
 					</div>
 					<div class="col-12 col-md-4 col-lg-3 d-flex flex-column justify-content-center">
-						<h4 class="text-center SelfStorage_green">от 2000 ₽</h4>
+						<h4 class="text-center SelfStorage_green">от {{ warehouse_item.min_price|default:"2000" }} ₽</h4>
 						<h6 class="text-center">Рядом с метро</h6>
 					</div>
 				</a>

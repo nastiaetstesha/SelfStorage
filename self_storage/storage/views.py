@@ -6,6 +6,7 @@ from django.db.models import Max, Min
 from django.urls import reverse
 from decimal import Decimal
 from django.db.models import F
+import random
 
 from .models import (
     ShortLink,
@@ -108,6 +109,100 @@ def boxes(request):
         warehouse = (
             Warehouse.objects.filter(is_active=True).order_by("city", "title").first()
         )
+
+    warehouses = Warehouse.objects.filter(is_active=True).order_by("city", "title")
+
+    # Правила хранения (разрешённые и запрещённые вещи)
+    allowed_rules = StorageRule.objects.filter(
+        is_active=True, rule_type=StorageRule.RuleType.ALLOWED
+    ).order_by("sort_order", "title")
+
+    forbidden_rules = StorageRule.objects.filter(
+        is_active=True, rule_type=StorageRule.RuleType.FORBIDDEN
+    ).order_by("sort_order", "title")
+
+    if request.method == "POST" and request.POST.get("action") == "pickup":
+        pass
+
+    busy_ids = set(
+        Rental.objects.filter(
+            status__in=[Rental.Status.ACTIVE, Rental.Status.OVERDUE]
+        ).values_list("box_id", flat=True)
+    )
+
+    # Список доступных изображений для складов (без повторений)
+    warehouse_images = ["image11", "image15", "image16", "image151", "image9"]
+    shuffled_images = warehouse_images.copy()
+    random.shuffle(shuffled_images)
+
+    warehouses_list = []
+    for i, wh in enumerate(warehouses):
+        wh_boxes_qs = Box.objects.filter(warehouse=wh, is_active=True).order_by("code")
+        wh_boxes = []
+        for b in wh_boxes_qs:
+            is_free = b.id not in busy_ids
+            wh_boxes.append({
+                "box": b,
+                "is_free": is_free,
+                "price_per_month": b.price_per_month,
+                "volume_m3": b.volume_m3,
+            })
+
+        # Вычисляем минимальную цену для этого склада
+        min_price = None
+        prices = list(wh_boxes_qs.values_list("length_m", "width_m", "height_m"))
+        if prices:
+            from .models import PRICE_PER_M3_PER_MONTH
+            min_price = min(
+                (Decimal(l) * Decimal(w) * Decimal(h) * PRICE_PER_M3_PER_MONTH).quantize(Decimal("0.01"))
+                for l, w, h in prices
+            )
+
+        warehouses_list.append({
+            "warehouse": wh,
+            "boxes": wh_boxes,
+            "min_price": min_price,
+            "image_name": shuffled_images[i % len(shuffled_images)],
+        })
+
+    # Первый склад по умолчанию
+    default_warehouse = warehouses[0] if warehouses else None
+    default_boxes = warehouses_list[0]["boxes"] if warehouses_list else []
+
+    price_estimates = [
+        {"volume": "до 3 м³", "price": "от 1000 ₽"},
+        {"volume": "3-10 м³", "price": "от 2500 ₽"},
+        {"volume": "10+ м³", "price": "от 5000 ₽"},
+    ]
+
+    if not default_warehouse:
+        return render(
+            request,
+            "storage/boxes.html",
+            {
+                "warehouse": None,
+                "warehouses": warehouses,
+                "warehouses_list": [],
+                "boxes": [],
+                "allowed_rules": allowed_rules,
+                "forbidden_rules": forbidden_rules,
+            },
+        )
+
+    return render(
+        request,
+        "storage/boxes.html",
+        {
+            "warehouse": default_warehouse,
+            "warehouses": warehouses,
+            "warehouses_list": warehouses_list,
+            "boxes": default_boxes,
+            "busy_ids": list(busy_ids),
+            "allowed_rules": allowed_rules,
+            "forbidden_rules": forbidden_rules,
+            "price_estimates": price_estimates,
+        },
+    )
 
     warehouses = Warehouse.objects.filter(is_active=True).order_by("city", "title")
 
