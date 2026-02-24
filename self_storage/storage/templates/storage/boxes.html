@@ -20,7 +20,7 @@
 		<ul class="nav nav-pills mb-3 d-flex justify-content-between" id="boxes-links" role="tablist">
 			{% for warehouse_item in warehouses_list %}
 			<li class="nav-item flex-grow-1 mx-2" role="presentation">
-				<a href="#BOX" class="row text-decoration-none py-3 px-4 mt-5 SelfStorage__boxlink" id="pills-{{ warehouse_item.warehouse.pk }}-tab" data-bs-toggle="pill" data-bs-target="#pills-{{ warehouse_item.warehouse.pk }}" role="tab" aria-controls="pills-{{ warehouse_item.warehouse.pk }}" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
+				<a href="#BOX" class="row text-decoration-none py-3 px-4 mt-5 SelfStorage__boxlink" id="pills-{{ warehouse_item.warehouse.pk }}-tab">
 					<div class="col-12 col-lg-3 d-flex justify-content-center">
 						<img src="{% static 'storage/img/' %}{{ warehouse_item.image_name }}.png" alt="" class="mb-3 mb-lg-0" style="width: 80px; height: 80px; object-fit: cover;">
 					</div>
