@@ -32,6 +32,8 @@ class Warehouse(TimeStampedModel):
     work_hours = models.CharField("Часы работы", max_length=120, blank=True, default="Ежедневно 9:00–21:00")
     is_active = models.BooleanField("Активен", default=True)
     photo = models.ImageField("Фото склада", upload_to="warehouses/", blank=True, null=True)
+    temperature = models.IntegerField("Температура, °С", default=18)
+    ceiling_height = models.DecimalField("Высота потолка, м", max_digits=4, decimal_places=2, default=Decimal("3.50"))
 
     class Meta:
         verbose_name = "Склад"
@@ -52,6 +54,18 @@ class Warehouse(TimeStampedModel):
 
     def total_boxes_count(self) -> int:
         return self.boxes.filter(is_active=True).count()
+
+    def min_price(self) -> Decimal:
+        prices = list(
+            self.boxes.filter(is_active=True).values_list("length_m", "width_m", "height_m")
+        )
+        if not prices:
+            return Decimal("0.00")
+        min_price = min(
+            (Decimal(l) * Decimal(w) * Decimal(h) * PRICE_PER_M3_PER_MONTH).quantize(Decimal("0.01"))
+            for l, w, h in prices
+        )
+        return min_price
 
 
 class Box(TimeStampedModel):
