@@ -1,13 +1,15 @@
+import random
+import qrcode
+from io import BytesIO
+import base64
+import json
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import login  # Этого импорта не хватало!
+from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-from django.db.models import Max, Min
+from django.db.models import Max, Min, F
 from django.urls import reverse
 from decimal import Decimal
-from django.db.models import F
-import random
-
 from .models import (
     ShortLink,
     Warehouse,
@@ -20,6 +22,25 @@ from .models import (
 )
 
 DEFAULT_TEMPERATURE_C = 18
+
+
+def generate_qr_code(data):
+    """Генерирует QR-код и возвращает его как base64 строку"""
+    qr = qrcode.QRCode(
+        version=1,
+        box_size=10,
+        border=5,
+    )
+    qr.add_data(data)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="#579586", back_color="white")
+    buffer = BytesIO()
+    img.save(buffer, format="PNG")
+    buffer.seek(0)
+    image_png = buffer.getvalue()
+    buffer.close()
+
+    return base64.b64encode(image_png).decode()
 
 
 def index(request):
@@ -204,73 +225,6 @@ def boxes(request):
         },
     )
 
-    warehouses = Warehouse.objects.filter(is_active=True).order_by("city", "title")
-
-    # Правила хранения (разрешённые и запрещённые вещи)
-    allowed_rules = StorageRule.objects.filter(
-        is_active=True, rule_type=StorageRule.RuleType.ALLOWED
-    ).order_by("sort_order", "title")
-
-    forbidden_rules = StorageRule.objects.filter(
-        is_active=True, rule_type=StorageRule.RuleType.FORBIDDEN
-    ).order_by("sort_order", "title")
-
-    if request.method == "POST" and request.POST.get("action") == "pickup":
-        pass
-
-    if not warehouse:
-        return render(
-            request,
-            "storage/boxes.html",
-            {
-                "warehouse": None,
-                "warehouses": warehouses,
-                "boxes": [],
-                "allowed_rules": allowed_rules,
-                "forbidden_rules": forbidden_rules,
-            },
-        )
-
-    busy_ids = set(
-        Rental.objects.filter(
-            status__in=[Rental.Status.ACTIVE, Rental.Status.OVERDUE]
-        ).values_list("box_id", flat=True)
-    )
-
-    boxes_qs = Box.objects.filter(warehouse=warehouse, is_active=True).order_by("code")
-
-    boxes_data = []
-    for b in boxes_qs:
-        is_free = b.id not in busy_ids
-        boxes_data.append(
-            {
-                "box": b,
-                "is_free": is_free,
-                "price_per_month": b.price_per_month,
-                "volume_m3": b.volume_m3,
-            }
-        )
-
-    price_estimates = [
-        {"volume": "до 3 м³", "price": "от 1000 ₽"},
-        {"volume": "3-10 м³", "price": "от 2500 ₽"},
-        {"volume": "10+ м³", "price": "от 5000 ₽"},
-    ]
-
-    return render(
-        request,
-        "storage/boxes.html",
-        {
-            "warehouse": warehouse,
-            "warehouses": warehouses,
-            "boxes": boxes_data,
-            "busy_ids": list(busy_ids),
-            "allowed_rules": allowed_rules,
-            "forbidden_rules": forbidden_rules,
-            "price_estimates": price_estimates,
-        },
-    )
-
 
 def login_redirect(request):
     """
@@ -296,7 +250,7 @@ def register(request):
     """Регистрация и вход по email"""
     if request.method == "POST":
         email = request.POST.get("email")
-        next_url = request.POST.get("next", "")  # 👈 Получаем next из формы
+        next_url = request.POST.get("next", "")  # Получаем next из формы
 
         if email:
             user, created = User.objects.get_or_create(
@@ -321,42 +275,39 @@ def register(request):
 
 @login_required
 def my_rent(request):
-    # Получаем или создаем профиль пользователя
-    profile, created = UserProfile.objects.get_or_create(user=request.user)
+    user = request.user
+    profile = UserProfile.objects.get(user=user)
+    rentals = Rental.objects.filter(user=user)
 
-    # Обработка POST запроса (сохранение данных)
-    if request.method == "POST":
-        # Обновляем телефон
-        phone = request.POST.get("phone")
-        if phone is not None:  # Разрешаем пустой телефон
-            profile.phone = phone
+    # Разделяем активные и завершенные аренды
+    active_rentals = rentals.filter(status='active')
+    other_rentals = rentals.exclude(status='active')
 
-        # Обновляем фото
-        if request.FILES.get("avatar"):
-            # Удаляем старое фото, если оно было
-            if profile.avatar:
-                profile.avatar.delete(save=False)
-            profile.avatar = request.FILES["avatar"]
+    # Добавляем QR-коды для каждой активной аренды
+    for rental in active_rentals:
+        # Формируем данные для QR-кода
+        qr_data = {
+            'box_code': rental.box.code,
+            'warehouse': rental.box.warehouse.title,
+            'address': rental.box.warehouse.address,
+            'start_date': rental.start_date.strftime('%d.%m.%Y'),
+            'end_date': rental.end_date.strftime('%d.%m.%Y'),
+            'access_key': f"ACCESS_{rental.id}_{rental.box.code}"
+        }
 
-        profile.save()
-        return redirect("storage:my_rent")
+        # Генерируем QR-код и добавляем к объекту аренды
+        rental.qr_code = generate_qr_code(json.dumps(qr_data, ensure_ascii=False))
+        rental.qr_data = qr_data
 
-    # Получаем аренды пользователя
-    rentals = Rental.objects.filter(user=request.user).order_by("-created_at")
-    active_rentals = rentals.filter(
-        status__in=[Rental.Status.ACTIVE, Rental.Status.OVERDUE]
-    )
+    context = {
+        'user': user,
+        'profile': profile,
+        'active_rentals': active_rentals,
+        'rentals': other_rentals
+    }
 
-    return render(
-        request,
-        "storage/my-rent.html",
-        {
-            "user": request.user,
-            "profile": profile,
-            "rentals": rentals,
-            "active_rentals": active_rentals,
-        },
-    )
+    # ВАЖНО: ЭТОТ RETURN ДОЛЖЕН БЫТЬ!
+    return render(request, 'storage/my-rent.html', context)
 
 
 def short_link_redirect(request, code: str):

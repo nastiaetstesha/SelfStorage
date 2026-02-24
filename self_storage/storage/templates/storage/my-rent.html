@@ -126,20 +126,125 @@
                 </div>
 
                 <!-- Вкладка "Моя аренда" -->
-                <div class="tab-pane fade" id="Rent" role="tabpanel" aria-labelledby="Rent-tab">
-                    <h1 class="fw-bold SelfStorage_green mb-5">Добрый день, {{ user.username }}!</h1>
-                    <a href="#" class="SelfStorage_orange">История аренды</a>
-                    <h4 class="SelfStorage_grey my-3">У вас пока нет активной аренды<br>Вы можете арендовать бокс на странице "Арендовать бокс"</h4>
-                    <div class="mb-5">
-                        <a href="{% url 'storage:boxes' %}" class="btn fs_24 px-5 py-3 text-white border-8 SelfStorage__bg_orange SelfStorage__btn2_orange mb-3">Арендовать бокс</a>
+                <!-- Вкладка "Моя аренда" -->
+<div class="tab-pane fade" id="Rent" role="tabpanel" aria-labelledby="Rent-tab">
+    <h1 class="fw-bold SelfStorage_green mb-5">Добрый день, {{ user.username }}!</h1>
+
+    <!-- Активные аренды -->
+    {% if active_rentals %}
+    <h3 class="SelfStorage_green mb-3">Текущие аренды</h3>
+    {% for rental in active_rentals %}
+        <div class="card mb-4 p-4" style="border-left: 4px solid #579586;">
+            <div class="row">
+                <div class="col-md-8">
+                    <h4 class="SelfStorage_green">Бокс №{{ rental.box.code }}</h4>
+                    <p class="mb-2">
+                        <strong>Склад:</strong> {{ rental.box.warehouse.title }}, {{ rental.box.warehouse.address }}<br>
+                        <strong>Размеры:</strong> {{ rental.box.length_m }}×{{ rental.box.width_m }}×{{ rental.box.height_m }} м<br>
+                        <strong>Объем:</strong> {{ rental.box.volume_m3 }} м³<br>
+                        <strong>Период:</strong> {{ rental.start_date|date:"d.m.Y" }} - {{ rental.end_date|date:"d.m.Y" }}<br>
+                        <strong>Статус:</strong>
+                        {% if rental.status == 'active' %}
+                            <span class="badge bg-success">Активна</span>
+                        {% elif rental.status == 'overdue' %}
+                            <span class="badge bg-danger">Просрочена</span>
+                        {% endif %}
+                        <br>
+                        <strong>Цена:</strong> {{ rental.final_price_per_month }} ₽/мес
+                    </p>
+                </div>
+                <div class="col-md-4 d-flex align-items-center justify-content-end">
+                    <div>
+                        <button class="btn SelfStorage__bg_green text-white mb-2 w-100">Продлить аренду</button>
+
+                        <!-- Кнопка с QR-кодом (открывает модалку) -->
+                        <button type="button" class="btn SelfStorage__bg_orange text-white w-100"
+                                data-bs-toggle="modal"
+                                data-bs-target="#qrModal{{ rental.id }}">
+                            Доступ по QR
+                        </button>
                     </div>
-                    <a href="#" class="SelfStorage_orange">Нужна помощь?</a>
                 </div>
             </div>
         </div>
-    </div>
-</main>
 
+        <!-- Модальное окно с QR-кодом для этой аренды -->
+        <div class="modal fade" id="qrModal{{ rental.id }}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold SelfStorage_green">QR-код доступа</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body text-center">
+                        <!-- QR-код, сгенерированный на Python -->
+                        <img src="data:image/png;base64,{{ rental.qr_code }}"
+                             alt="QR-код доступа"
+                             class="img-fluid mb-3"
+                             style="max-width: 256px;">
+
+                        <p class="fw-bold">Бокс №{{ rental.box.code }}</p>
+                        <p>{{ rental.box.warehouse.title }}, {{ rental.box.warehouse.address }}</p>
+                        <p class="mb-1">Действителен до: {{ rental.end_date|date:"d.m.Y" }}</p>
+                        <p class="SelfStorage_grey small">Покажите этот QR-код на входе в склад</p>
+                    </div>
+                    <div class="modal-footer justify-content-center">
+                        <button type="button" class="btn SelfStorage__bg_orange text-white" data-bs-dismiss="modal">Закрыть</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+{% endif %}
+
+    <!-- История аренд (если есть) -->
+    {% if rentals %}
+        <div class="mt-5">
+            <h3 class="SelfStorage_green mb-3">История аренд</h3>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="SelfStorage__bg_green text-white">
+                        <tr>
+                            <th>Бокс</th>
+                            <th>Склад</th>
+                            <th>Период</th>
+                            <th>Статус</th>
+                            <th>Цена</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rental in rentals %}
+                            <tr>
+                                <td>№{{ rental.box.code }}</td>
+                                <td>{{ rental.box.warehouse.title }}</td>
+                                <td>{{ rental.start_date|date:"d.m.Y" }} - {{ rental.end_date|date:"d.m.Y" }}</td>
+                                <td>
+                                    {% if rental.status == 'active' %}
+                                        <span class="badge bg-success">Активна</span>
+                                    {% elif rental.status == 'overdue' %}
+                                        <span class="badge bg-danger">Просрочена</span>
+                                    {% elif rental.status == 'closed' %}
+                                        <span class="badge bg-secondary">Закрыта</span>
+                                    {% elif rental.status == 'lost' %}
+                                        <span class="badge bg-dark">Потеряна</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ rental.final_price_per_month }} ₽/мес</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Ссылка на помощь -->
+    <div class="text-center mt-5 pt-3 border-top">
+        <a href="#" class="SelfStorage_orange">Нужна помощь? Свяжитесь с нами</a>
+    </div>
+</div>
+</main>
+</main>
 <!-- Футер -->
 <footer class="container py-5">
     <div class="row mb-5">
