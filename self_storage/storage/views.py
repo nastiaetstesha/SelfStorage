@@ -376,39 +376,80 @@ def short_link_redirect(request, code: str):
 @login_required
 def rent_box(request, box_id):
     box = get_object_or_404(Box, pk=box_id, is_active=True)
+    base_price = box.price_per_month
+
+    promo_result = None
+    applied_promo_code = None
 
     if request.method == "POST":
-        promo_code = request.POST.get("promo_code", "").strip()
-        contact_phone = request.POST.get("contact_phone")
-        pickup_address = request.POST.get("pickup_address", "")
+        action = request.POST.get("action", "")
 
-        base_price = box.price_per_month
-        final_price = base_price
-        promo = None
+        if action == "apply_promo":
+            promo_code = request.POST.get("promo_code", "").strip()
+            if promo_code:
+                promo = PromoCode.objects.filter(code=promo_code).first()
+                if promo:
+                    if promo.is_valid_now():
+                        discount = Decimal(promo.discount_percent) / 100
+                        final_price = base_price * (1 - discount)
+                        promo_result = {
+                            "valid": True,
+                            "code": promo.code,
+                            "discount_percent": promo.discount_percent,
+                            "base_price": base_price,
+                            "final_price": final_price.quantize(Decimal("0.01")),
+                        }
+                        applied_promo_code = promo_code
+                    else:
+                        promo_result = {
+                            "valid": False,
+                            "error": "Промокод недействителен (истёк срок действия)",
+                        }
+                else:
+                    promo_result = {
+                        "valid": False,
+                        "error": "Промокод не найден",
+                    }
+            else:
+                promo_result = {
+                    "valid": False,
+                    "error": "Введите промокод",
+                }
 
-        if promo_code:
-            promo = PromoCode.objects.filter(code=promo_code).first()
-            if promo and promo.is_valid_now():
-                discount = Decimal(promo.discount_percent) / 100
-                final_price = base_price * (1 - discount)
+        elif action == "rent":
+            promo_code = request.POST.get("promo_code", "").strip()
+            contact_phone = request.POST.get("contact_phone")
+            pickup_address = request.POST.get("pickup_address", "")
 
-        rental = Rental.objects.create(
-            user=request.user,
-            box=box,
-            contact_phone=contact_phone,
-            pickup_address=pickup_address,
-            base_price_per_month=base_price,
-            final_price_per_month=final_price,
-            promo_code=promo,
-            status=Rental.Status.ACTIVE,
-        )
+            final_price = base_price
+            promo = None
 
-        return redirect("storage:my_rent")
+            if promo_code:
+                promo = PromoCode.objects.filter(code=promo_code).first()
+                if promo and promo.is_valid_now():
+                    discount = Decimal(promo.discount_percent) / 100
+                    final_price = base_price * (1 - discount)
+
+            rental = Rental.objects.create(
+                user=request.user,
+                box=box,
+                contact_phone=contact_phone,
+                pickup_address=pickup_address,
+                base_price_per_month=base_price,
+                final_price_per_month=final_price.quantize(Decimal("0.01")),
+                promo_code=promo,
+                status=Rental.Status.ACTIVE,
+            )
+
+            return redirect("storage:my_rent")
 
     return render(
         request,
         "storage/rent_box.html",
         {
             "box": box,
+            "base_price": base_price,
+            "promo_result": promo_result,
+            "applied_promo_code": applied_promo_code,
         },
     )

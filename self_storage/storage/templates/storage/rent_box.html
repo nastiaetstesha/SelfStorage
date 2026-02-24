@@ -24,7 +24,16 @@
 					<p class="mb-1"><strong>Код бокса:</strong> {{ box.code }}</p>
 					<p class="mb-1"><strong>Размеры:</strong> {{ box.length_m }} × {{ box.width_m }} × {{ box.height_m }} м</p>
 					<p class="mb-1"><strong>Объём:</strong> {{ box.volume_m3 }} м³</p>
-					<p class="mb-0"><strong>Цена за месяц:</strong> <span class="SelfStorage_orange fw-bold">{{ box.price_per_month }} ₽</span></p>
+					<p class="mb-0">
+						<strong>Цена за месяц:</strong> 
+						{% if promo_result.valid %}
+						<span class="SelfStorage_orange fw-bold text-decoration-line-through">{{ base_price }} ₽</span>
+						<span class="SelfStorage_green fw-bold ms-2">{{ promo_result.final_price }} ₽</span>
+						<span class="badge bg-success ms-2">-{{ promo_result.discount_percent }}%</span>
+						{% else %}
+						<span class="SelfStorage_orange fw-bold">{{ base_price }} ₽</span>
+						{% endif %}
+					</p>
 				</div>
 			</div>
 			
@@ -35,16 +44,43 @@
 					<p class="mb-0"><strong>Email:</strong> {{ user.email }}</p>
 				</div>
 			</div>
+
+			{% if promo_result and not promo_result.valid %}
+			<div class="alert alert-danger" role="alert">
+				{{ promo_result.error }}
+			</div>
+			{% endif %}
+
+			{% if promo_result.valid %}
+			<div class="alert alert-success" role="alert">
+				Промокод <strong>{{ promo_result.code }}</strong> применён! Скидка {{ promo_result.discount_percent }}%
+			</div>
+			{% endif %}
+			
+			<div class="card mb-4">
+				<div class="card-body">
+					<h5 class="card-title fw-bold mb-4">Промокод</h5>
+					
+					<form method="post" class="row g-3 align-items-end">
+						{% csrf_token %}
+						<input type="hidden" name="action" value="apply_promo">
+						<div class="col-8">
+							<label for="promo_code" class="form-label">Введите промокод</label>
+							<input type="text" class="form-control" id="promo_code" name="promo_code" value="{{ applied_promo_code|default:'' }}" placeholder="Например: SPRING2026">
+						</div>
+						<div class="col-4">
+							<button type="submit" class="btn btn-outline-primary w-100">Применить промокод</button>
+						</div>
+					</form>
+				</div>
+			</div>
 			
 			<form method="post" class="card">
 				{% csrf_token %}
+				<input type="hidden" name="action" value="rent">
+				<input type="hidden" name="promo_code" value="{{ applied_promo_code|default:'' }}">
 				<div class="card-body">
 					<h5 class="card-title fw-bold mb-4">Данные для аренды</h5>
-					
-					<div class="mb-3">
-						<label for="promo_code" class="form-label">Промокод (если есть)</label>
-						<input type="text" class="form-control" id="promo_code" name="promo_code" placeholder="Введите промокод">
-					</div>
 					
 					<div class="mb-3">
 						<label for="contact_phone" class="form-label">Телефон для связи *</label>
