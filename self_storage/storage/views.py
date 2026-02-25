@@ -298,12 +298,20 @@ def my_rent(request):
         # Генерируем QR-код и добавляем к объекту аренды
         rental.qr_code = generate_qr_code(json.dumps(qr_data, ensure_ascii=False))
         rental.qr_data = qr_data
+    for rental in active_rentals:
+        rental.lk_msgs = rental.lk_messages()
+
+    overdue_rentals = rentals.filter(status='overdue')
+    for rental in overdue_rentals:
+        rental.lk_msgs = rental.lk_messages()
+
 
     context = {
         'user': user,
         'profile': profile,
         'active_rentals': active_rentals,
-        'rentals': other_rentals
+        'rentals': other_rentals,
+        'overdue_rentals': overdue_rentals,
     }
 
     # ВАЖНО: ЭТОТ RETURN ДОЛЖЕН БЫТЬ!

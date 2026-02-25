@@ -11,6 +11,8 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 import secrets
+from django.utils.formats import date_format
+
 
 PRICE_PER_M3_PER_MONTH = Decimal("750.00")
 OVERDUE_TARIFF_MULTIPLIER = Decimal("1.10")
@@ -236,6 +238,83 @@ class Rental(TimeStampedModel):
     base_price_per_month = models.DecimalField("Цена/мес без скидки", max_digits=12, decimal_places=2, default=Decimal("0.00"))
     final_price_per_month = models.DecimalField("Цена/мес со скидкой", max_digits=12, decimal_places=2, default=Decimal("0.00"))
 
+    def lost_date(self):
+        """Дата, после которой аренда считается потерянной."""
+        if not self.end_date:
+            return None
+        return self.end_date + timedelta(days=30 * int(self.overdue_grace_months))
+
+    def overdue_price_per_month(self):
+        return (self.final_price_per_month * OVERDUE_TARIFF_MULTIPLIER).quantize(Decimal("0.01"))
+
+    def days_left(self):
+        if not self.end_date:
+            return None
+        return (self.end_date - timezone.localdate()).days
+
+    def lk_messages(self):
+        """
+        Возвращает список сообщений для ЛК:
+        [{"level": "info|warning|danger", "text": "..."}]
+        """
+        today = timezone.localdate()
+        msgs = []
+
+        if self.end_date:
+            end_human = date_format(self.end_date, "j E Y")  # 25 февраля 2026
+            msgs.append({
+                "level": "info",
+                "text": f"Вы можете продлить аренду или забрать вещи до {end_human} включительно."
+            })
+
+        # Статус ACTIVE: предупреждения до конца
+        if self.status == self.Status.ACTIVE and self.end_date:
+            days = (self.end_date - today).days
+
+            if days in (30, 14, 7, 3):
+                msgs.append({
+                    "level": "warning",
+                    "text": f"Напоминание: до конца аренды осталось {days} дн. Лучше запланировать вывоз или продление."
+                })
+            elif 0 <= days <= 3:
+                msgs.append({
+                    "level": "danger",
+                    "text": "Срок аренды заканчивается очень скоро. Продлите аренду или заберите вещи."
+                })
+
+        # Просрочка
+        if self.status == self.Status.OVERDUE and self.end_date:
+            lost_date = self.lost_date()
+            lost_human = date_format(lost_date, "j E Y") if lost_date else "—"
+            overdue_price = self.overdue_price_per_month()
+
+            msgs.append({
+                "level": "danger",
+                "text": "Вы не забрали вещи в срок. Аренда просрочена."
+            })
+            msgs.append({
+                "level": "warning",
+                "text": f"На период просрочки действует повышенный тариф: {overdue_price} ₽/мес."
+            })
+            msgs.append({
+                "level": "warning",
+                "text": f"Мы будем хранить вещи ещё {self.overdue_grace_months} месяцев после даты окончания аренды."
+            })
+            msgs.append({
+                "level": "danger",
+                "text": f"Если вы не заберёте вещи до {lost_human}, аренда будет помечена как «Потеряна»."
+            })
+
+            days_overdue = (today - self.end_date).days
+            if days_overdue > 0:
+                month_index = days_overdue // 30
+                if month_index >= 1:
+                    msgs.append({
+                        "level": "info",
+                        "text": f"Просрочка: {month_index} мес."
+                    })
+
+        return msgs
     class Meta:
         verbose_name = "Аренда"
         verbose_name_plural = "Аренды"

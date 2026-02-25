@@ -153,6 +153,21 @@
                         <strong>Цена:</strong> {{ rental.final_price_per_month }} ₽/мес
                     </p>
                 </div>
+				{% if rental.lk_msgs %}
+				<div class="mt-3">
+					{% for m in rental.lk_msgs %}
+					<div class="alert
+						{% if m.level == 'info' %}alert-info
+						{% elif m.level == 'warning' %}alert-warning
+						{% elif m.level == 'danger' %}alert-danger
+						{% else %}alert-secondary{% endif %}
+					" role="alert">
+						{{ m.text }}
+					</div>
+					{% endfor %}
+				</div>
+				{% endif %}
+
                 <div class="col-md-4 d-flex align-items-center justify-content-end">
                     <div>
                         <button class="btn SelfStorage__bg_green text-white mb-2 w-100">Продлить аренду</button>
